@@ -59,19 +59,12 @@ def get_weather():
         # 生成穿衣建议
         clothing_advice = calculate_clothing(current_temp)
 
-        # 获取 OWM 的图标代码 (例如 "01d")
-        # 获取 OWM 的图标代码 (例如 "01d")
-        icon_code = res['weather'][0]['icon']
-        icon_url = f"https://raw.githubusercontent.com/jinwh5/ScheduledEmail-Tasks/main/weather-icons/{icon_code}.png"
-        
         return {
             "temp": current_temp,
             "high": high_temp,
             "low": low_temp,
             "desc": res['weather'][0]['description'],
-            ##"icon": f"https://openweathermap.org/img/wn/{res['weather'][0]['icon']}@2x.png",
-            # "icon": icon_url,
-            "icon": f"https://raw.githubusercontent.com/yuvraaaj/openweathermap-weather-icons/master/icons/{res['weather'][0]['icon']}.png",
+            "icon": f"https://openweathermap.org/img/wn/{res['weather'][0]['icon']}@2x.png",
             "humidity": res['main']['humidity'],
             "advice": clothing_advice  # 新增的字段
         }
