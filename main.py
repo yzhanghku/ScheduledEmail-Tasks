@@ -70,7 +70,8 @@ def get_weather():
             "low": low_temp,
             "desc": res['weather'][0]['description'],
             ##"icon": f"https://openweathermap.org/img/wn/{res['weather'][0]['icon']}@2x.png",
-            "icon": icon_url,
+            # "icon": icon_url,
+            "icon": f"https://raw.githubusercontent.com/yuvraaaj/openweathermap-weather-icons/master/icons/{res['weather'][0]['icon']}.png",
             "humidity": res['main']['humidity'],
             "advice": clothing_advice  # 新增的字段
         }
