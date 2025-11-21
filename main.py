@@ -27,54 +27,108 @@ CITY_NAME = "Hong Kong"
 
 # ==================== 🛠️ 核心逻辑层 ====================
 
+def calculate_clothing(temp):
+    """根据温度计算穿衣建议"""
+    if temp >= 30:
+        return "🥵 酷热：建议穿短裤短袖，注意防暑降温。"
+    elif temp >= 25:
+        return "👕 暖和：建议穿短袖T恤，透气舒适为主。"
+    elif temp >= 20:
+        return "👔 舒适：单层薄衫、长袖T恤或衬衫。"
+    elif temp >= 15:
+        return "🧥 稍凉：建议穿风衣、休闲夹克或薄毛衣。"
+    elif temp >= 10:
+        return "🧶 天冷：毛衣加外套，或者穿厚一点的风衣。"
+    elif temp >= 5:
+        return "🧣 寒冷：羽绒服、厚毛衣、围巾走起。"
+    else:
+        return "🥶 严寒：把最厚的衣服都穿上，注意保暖！"
+
 def get_weather():
     """获取天气数据，返回字典"""
     print("🌤️ 正在查询天气...")
     url = f"https://api.openweathermap.org/data/2.5/weather?lat={LAT}&lon={LON}&appid={OWM_API_KEY}&units=metric&lang=zh_cn"
     try:
         res = requests.get(url, timeout=10).json()
+        
+        # 提取数据
+        current_temp = int(res['main']['temp'])
+        high_temp = int(res['main']['temp_max'])
+        low_temp = int(res['main']['temp_min'])
+        
+        # 生成穿衣建议
+        clothing_advice = calculate_clothing(current_temp)
+
+        # 获取 OWM 的图标代码 (例如 "01d")
+        icon_code = res['weather'][0]['icon']
+        
         return {
-            "temp": int(res['main']['temp']),
+            "temp": current_temp,
+            "high": high_temp,
+            "low": low_temp,
             "desc": res['weather'][0]['description'],
-            "icon": f"http://openweathermap.org/img/wn/{res['weather'][0]['icon']}@2x.png",
-            "high": int(res['main']['temp_max']),
-            "low": int(res['main']['temp_min']),
-            "humidity": res['main']['humidity']
+            ##"icon": f"https://openweathermap.org/img/wn/{res['weather'][0]['icon']}@2x.png",
+            "icon": f"https://raw.githubusercontent.com/jinwh5/ScheduledEmail-Tasks/main/weather-icons/{icon_code}.png",
+            "humidity": res['main']['humidity'],
+            "advice": clothing_advice  # 新增的字段
         }
     except Exception as e:
         print(f"天气获取失败: {e}")
         return None
 
 def get_calendar():
-    """获取今日行程，返回列表 [{'time': '10:00', 'title': '开会'}, ...]"""
-    print("📅 正在解析日历...")
+    """
+    万能适配版：支持 Google/iCloud 日历
+    自动将 UTC 时间转换为 'Asia/Shanghai'
+    """
+    print("📅 正在解析日历 (Google/Apple通用版)...")
     events = []
+    
+    # 定义你的本地时区
+    local_tz = pytz.timezone('Asia/Shanghai')
+    
     try:
         res = requests.get(ICS_URL, timeout=15)
+        res.raise_for_status() # 检查 404 等错误
         cal = Calendar.from_ical(res.content)
-        today = date.today()
+        
+        # 获取脚本运行时的“今天”
+        today = datetime.now(local_tz).date()
         
         for component in cal.walk():
             if component.name == "VEVENT":
-                start = component.get('dtstart').dt
                 summary = str(component.get('summary'))
+                dtstart = component.get('dtstart').dt
                 
-                # 简单的日期过滤
-                if isinstance(start, datetime):
-                    check_date = start.date()
-                    time_str = start.strftime("%H:%M")
-                else:
-                    check_date = start
-                    time_str = "全天" # All day event
+                # --- 时区标准化处理 ---
+                if isinstance(dtstart, datetime):
+                    # 1. 如果是 datetime 对象 (非全天)
+                    if dtstart.tzinfo is None:
+                        # 如果是 naive (无时区)，假设它是本地时间
+                        start_local = local_tz.localize(dtstart)
+                    else:
+                        # 如果是 aware (有时区，比如 Google 的 UTC)，转为本地时间
+                        start_local = dtstart.astimezone(local_tz)
+                    
+                    check_date = start_local.date()
+                    time_str = start_local.strftime("%H:%M")
+                    
+                elif isinstance(dtstart, date):
+                    # 2. 如果是 date 对象 (全天事件)
+                    check_date = dtstart
+                    time_str = "全天"
                 
+                # --- 匹配今天 ---
                 if check_date == today:
                     events.append({"time": time_str, "title": summary})
         
         # 按时间排序
         events.sort(key=lambda x: x['time'])
         return events
+
     except Exception as e:
         print(f"日历获取失败: {e}")
+        # 返回一个空列表，避免程序崩溃
         return []
 
 def get_quote():
@@ -115,12 +169,28 @@ def render_html(weather, events, quote):
     # 2. 处理天气显示
     if weather:
         weather_html = f"""
-        <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between;">
             <div>
-                <div style="font-size: 36px; font-weight: bold; color: #1c1c1e;">{weather['temp']}°</div>
-                <div style="color: #3a3a3c; font-size: 14px;">{weather['desc']} | 💧{weather['humidity']}%</div>
+                <div style="font-size: 42px; font-weight: 800; color: #1c1c1e; line-height: 1;">
+                    {weather['temp']}°
+                </div>
+                
+                <div style="margin-top: 6px; font-size: 15px; color: #3a3a3c; font-weight: 500;">
+                    <span style="color: #ff3b30;">H:{weather['high']}°</span> 
+                    <span style="color: #d1d1d6; margin: 0 4px;">/</span>
+                    <span style="color: #007aff;">L:{weather['low']}°</span>
+                    <span style="margin-left: 8px; color: #8e8e93;">{weather['desc']}</span>
+                </div>
+
+                <div style="font-size: 13px; color: #8e8e93; margin-top: 4px;">
+                    相对湿度: {weather['humidity']}%
+                </div>
             </div>
-            <img src="{weather['icon']}" style="width: 60px; height: 60px;">
+            <img src="{weather['icon']}" style="width: 70px; height: 70px;">
+        </div>
+        
+        <div style="margin-top: 15px; padding: 12px; background-color: #f2f2f7; border-radius: 10px; font-size: 13px; color: #3a3a3c; border-left: 4px solid #34c759;">
+            <b>👕 穿衣助手：</b>{weather['advice']}
         </div>
         """
     else:
