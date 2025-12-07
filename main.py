@@ -11,7 +11,7 @@ import pytz
 
 # ==================== ⚙️ 配置中心 ====================
 # 【1. 邮件发送配置】
-SMTP_HOST = "smtp.qq.com"
+SMTP_HOST = "smtp.gmail.com"
 SMTP_PORT = 465
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL")     # 也就是你的机器人QQ
 SENDER_PASS = os.environ.get("SENDER_PASS")       # 你的授权码
