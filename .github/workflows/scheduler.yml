@@ -8,6 +8,8 @@ on:
 jobs:
   compile_email_body:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       TZ: Asia/Hong_Kong
 
@@ -26,3 +28,11 @@ jobs:
 
     - name: Run script
       run: python HK/compile.py
+
+    - name: Commit and push HTML file
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add HK/*.html
+        git commit -m "Add generated HTML file" || exit 0
+        git push
