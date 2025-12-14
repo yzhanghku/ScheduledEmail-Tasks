@@ -3,8 +3,8 @@ import datetime as dt
 import requests
 import pandas as pd
 
-sender = 'Yaya'
-receiver = 'Gatsby'
+sender = os.environ.get('SENDER_NAME')
+receiver = os.environ.get('RECEIVER_NAME')
 work_dir = os.path.dirname(os.path.abspath(__file__))
 cd = os.chdir(work_dir)
 
@@ -12,10 +12,10 @@ now = dt.datetime.now()
 today = now.strftime('%Y%m%d')
 day_of_week = now.strftime('%A')
 date_formatted = now.strftime('%-d %b %Y')
-[LAT, LON, CITY] = ['22.285072445851448', '114.22469109446133', 'Hong Kong']
-OWM_API_KEY = '0d41faf265e4a5f66790a763d44d2ecd'
-AV_API_KEY = '0TM43G8VWTHFT4BQ'
-Stock_tickers = ['NVDA', 'MSTR']
+LAT, LON, CITY = map(os.environ.get, ['LAT', 'LON', 'CITY'])
+OWM_API_KEY = os.environ.get('OWM_API_KEY')
+AV_API_KEY = os.environ.get('AV_API_KEY')
+Stock_tickers = ['NVDA', 'ORCL', 'MSTR']
 Crypto_tickers = ['BTC', 'USDT'] # Format: from BTC to USDT
 
 filename_email_body = f'Email Body by Date/email_body_{today}.html'

@@ -12,6 +12,13 @@ jobs:
       contents: write
     env:
       TZ: Asia/Hong_Kong
+      SENDER_NAME: ${{ secrets.SENDER_NAME }}
+      RECEIVER_NAME: ${{ secrets.RECEIVER_NAME }}
+      LAT: ${{ secrets.LAT }}
+      LON: ${{ secrets.LON }}
+      CITY: ${{ secrets.CITY }}
+      OWM_API_KEY: ${{ secrets.OWM_API_KEY }}
+      AV_API_KEY: ${{ secrets.AV_API_KEY }}
 
     steps:
     - name: Checkout code
