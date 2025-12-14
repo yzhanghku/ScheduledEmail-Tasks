@@ -31,7 +31,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install requests pandas
+        pip install requests pandas yfinance
 
     - name: Run script
       run: python HK/compile.py
