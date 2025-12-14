@@ -1,7 +1,9 @@
 import os
 import datetime as dt
+from dateutil.relativedelta import relativedelta
 import requests
 import pandas as pd
+import yfinance as yf
 
 sender = os.environ.get('SENDER_NAME')
 receiver = os.environ.get('RECEIVER_NAME')
@@ -17,6 +19,7 @@ OWM_API_KEY = os.environ.get('OWM_API_KEY')
 AV_API_KEY = os.environ.get('AV_API_KEY')
 Stock_tickers = ['NVDA', 'ORCL', 'MSTR']
 Crypto_tickers = ['BTC', 'USDT'] # Format: from BTC to USDT
+yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI']
 
 filename_email_body = f'Email Body by Date/email_body_{today}.html'
 
@@ -68,6 +71,79 @@ def get_markets(tickers=Stock_tickers):
 
 Stock_data = get_markets()
 
+def get_yf(tickers, period='ytd'):
+    """
+    Fetch historical price data from Yahoo Finance.
+    
+    Args:
+        tickers: A single ticker string or list of ticker strings
+        period: '1d', '1mo', or 'ytd'
+    
+    Returns:
+        DataFrame with historical price data
+    """
+    if period == '1d':
+        data = yf.download(tickers, period='1d')
+    elif period == '1mo':
+        data = yf.download(tickers, period='1mo')
+    elif period == 'ytd':
+        # Get last trading day of previous year
+        prev_year = dt.datetime.now().year - 1
+        dec_start = f"{prev_year}-12-20"
+        dec_end = f"{prev_year}-12-31"
+        dec_data = yf.download(tickers, start=dec_start, end=dec_end)
+        last_trading_day = dec_data.index[-1].strftime('%Y-%m-%d')
+        
+        data = yf.download(tickers, start=last_trading_day)
+    else:
+        raise ValueError("period must be '1d', '1mo', or 'ytd'")
+    
+    return data
+
+yf_data = get_yf(yf_tickers, period='ytd')
+# print(yf_data['Close'])
+
+def aggregate_returns(df, tickers):
+    close = df['Close']
+    
+    # Last price
+    last = close.iloc[-1]
+    
+    # 1D return
+    return_1d = (close.iloc[-1] / close.iloc[-2] - 1) * 100
+    
+    # 1M return - find the closest trading day to one month ago
+    one_month_ago = dt.datetime.now() - relativedelta(months=1)
+    close_1m = close[close.index <= one_month_ago].iloc[-1]
+    return_1m = (close.iloc[-1] / close_1m - 1) * 100
+    
+    # YTD return - find last trading day of previous year
+    prev_year = dt.datetime.now().year - 1
+    prev_year_data = close[close.index.year == prev_year]
+    close_ytd = prev_year_data.iloc[-1]
+    return_ytd = (close.iloc[-1] / close_ytd - 1) * 100
+    
+    # Build summary table
+    summary = pd.DataFrame({
+        'Last': last,
+        '1D': return_1d,
+        '1M': return_1m,
+        'YTD': return_ytd
+    })
+    
+    # Reorder to match original ticker order
+    summary = summary.reindex(tickers)
+    
+    summary['1D'] = summary['1D'].apply(lambda x: f"{x:.1f}%")
+    summary['1M'] = summary['1M'].apply(lambda x: f"{x:.1f}%")
+    summary['YTD'] = summary['YTD'].apply(lambda x: f"{x:.0f}%")
+    
+    return summary
+
+yf_summary = aggregate_returns(yf_data, yf_tickers)
+
+
+print('Compiling email body...')
 html_content = f"""
 <!DOCTYPE html>
 <html>
@@ -90,9 +166,9 @@ html_content = f"""
           <!-- Body -->
           <tr>
             <td style="padding:50px 40px; font-size:18px; line-height:1.7; color:#4a4a4a; background:#f9f6f0">
-              Good <strong>{day_of_week}</strong> morning, {receiver}! It’s <strong>{date_formatted}</strong>, and {CITY}'s got {desc}, feeling like {feels_like}°C.<br><br>
+              Good <strong>{day_of_week}</strong> morning, {receiver}! It's <strong>{date_formatted}</strong>, and {CITY}'s got {desc}, feeling like {feels_like}°C.<br><br>
                 Market update:<br><br>
-                <table border="1" style="border-collapse:collapse; width:80%; margin: 0 auto;"><tr><th style="text-align: center;">Ticker</th><th style="text-align: center;">Price</th><th style="text-align: center;">1D %</th><th style="text-align: center;">As Of</th></tr>{''.join([f'<tr><td style="text-align: center;">{row.Ticker}</td><td style="text-align: center;">{row.Price}</td><td style="text-align: center;">{row.Change_pct}</td><td style="text-align: center;">{row.AsOf}</td></tr>' for row in Stock_data.itertuples()])}</table>
+                <table border="1" style="border-collapse:collapse; width:80%; margin: 0 auto;"><tr><th style="text-align: center;">Ticker</th><th style="text-align: center;">Last</th><th style="text-align: center;">1D</th><th style="text-align: center;">1M</th><th style="text-align: center;">YTD</th></tr>{''.join([f'<tr><td style="text-align: center;">{ticker}</td><td style="text-align: center;">{row["Last"]:,.0f}</td><td style="text-align: center;">{row["1D"]}</td><td style="text-align: center;">{row["1M"]}</td><td style="text-align: center;">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
                 <br><br>
               <p style="margin:0; font-size:24px; color:#d97706; font-style:italic; text-align:center;">
                 Your day starts now — own it!
