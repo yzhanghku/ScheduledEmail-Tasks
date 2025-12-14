@@ -25,4 +25,4 @@ jobs:
         pip install requests pandas
 
     - name: Run script
-      run: python "Project HK/Email Compile.py"
+      run: python HK/compile.py
