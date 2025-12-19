@@ -52,10 +52,10 @@ jobs:
 
         html_body: file://HK/output.html 
 
-    - name: Commit and push HTML file
-      run: |
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git add HK/*.html
-        git commit -m "Add generated HTML file" || exit 0
-        git push
+    # - name: Commit and push HTML file
+    #   run: |
+    #     git config --local user.email "github-actions[bot]@users.noreply.github.com"
+    #     git config --local user.name "github-actions[bot]"
+    #     git add HK/*.html
+    #     git commit -m "Add generated HTML file" || exit 0
+    #     git push

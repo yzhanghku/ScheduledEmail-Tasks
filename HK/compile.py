@@ -19,9 +19,9 @@ OWM_API_KEY = os.environ.get('OWM_API_KEY')
 AV_API_KEY = os.environ.get('AV_API_KEY')
 Stock_tickers = ['NVDA', 'ORCL', 'MSTR']
 Crypto_tickers = ['BTC', 'USDT'] # Format: from BTC to USDT
-yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI']
+yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI', '9988.HK', '688795.SS']
 
-filename_email_body = f'Email Body by Date/email_body_{today}.html'
+# filename_email_body = f'Email Body by Date/email_body_{today}.html'
 filename_email_send = f'output.html'
 
 def get_weather():
@@ -150,15 +150,15 @@ html_content = f"""
 <html>
 <head>
 <body style="margin:0; padding:0; background:#faf8f6;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#faf8f6; padding:40px 20px;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#faf8f6; padding:20px 10px;">
     <tr>
       <td align="center">
-        <table role="presentation" width="600" style="max-width:600px; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.05); font-family:'Georgia', serif; color:#333333;">
+        <table role="presentation" width="100%" style="max-width:500px; background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.05); font-family:'Georgia', serif; color:#333333;">
           
           <!-- Header with soft gradient -->
           <tr>
-            <td style="background:linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); padding:60px 40px; text-align:center;">
-              <h1 style="margin:0; font-size:32px; color:#5d4037; font-weight:normal;">
+            <td style="background:linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); padding:40px 30px; text-align:center;">
+              <h1 style="margin:0; font-size:28px; color:#5d4037; font-weight:normal;">
                 Daily Check-in
               </h1>
             </td>
@@ -166,22 +166,14 @@ html_content = f"""
           
           <!-- Body -->
           <tr>
-            <td style="padding:50px 40px; font-size:18px; line-height:1.7; color:#4a4a4a; background:#f9f6f0">
+            <td style="padding:35px 30px; font-size:16px; line-height:1.6; color:#4a4a4a; background:#f9f6f0">
               Good <strong>{day_of_week}</strong> morning, {receiver}! It's <strong>{date_formatted}</strong>, and {CITY}'s got {desc}, feeling like {feels_like}°C.<br><br>
                 Market update:<br><br>
-                <table border="1" style="border-collapse:collapse; width:80%; margin: 0 auto;"><tr><th style="text-align: center;">Ticker</th><th style="text-align: center;">Last</th><th style="text-align: center;">1D</th><th style="text-align: center;">1M</th><th style="text-align: center;">YTD</th></tr>{''.join([f'<tr><td style="text-align: center;">{ticker}</td><td style="text-align: center;">{row["Last"]:,.0f}</td><td style="text-align: center;">{row["1D"]}</td><td style="text-align: center;">{row["1M"]}</td><td style="text-align: center;">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
+                <table border="1" style="border-collapse:collapse; width:100%; margin: 0 auto; font-size:14px;"><tr><th style="text-align: center; padding:8px;">Ticker</th><th style="text-align: center; padding:8px;">Last</th><th style="text-align: center; padding:8px;">1D</th><th style="text-align: center; padding:8px;">1M</th><th style="text-align: center; padding:8px;">YTD</th></tr>{''.join([f'<tr><td style="text-align: center; padding:6px;">{ticker}</td><td style="text-align: center; padding:6px;">{row["Last"]:,.0f}</td><td style="text-align: center; padding:6px;">{row["1D"]}</td><td style="text-align: center; padding:6px;">{row["1M"]}</td><td style="text-align: center; padding:6px;">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
                 <br><br>
-              <p style="margin:0; font-size:24px; color:#d97706; font-style:italic; text-align:center;">
+              <p style="margin:0; font-size:20px; color:#d97706; font-style:italic; text-align:center;">
                 Your day starts now — own it!
               </p>
-            </td>
-          </tr>
-          
-          <!-- Signature -->
-          <tr>
-            <td style="background:#fffaf0; padding:40px; text-align:center; font-size:18px; color:#8b6f47;">
-              Love,<br>
-              <span style="font-size:26px; color:#d97706;">{sender} ♡</span>
             </td>
           </tr>
           
