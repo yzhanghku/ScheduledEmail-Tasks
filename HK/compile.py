@@ -22,6 +22,7 @@ Crypto_tickers = ['BTC', 'USDT'] # Format: from BTC to USDT
 yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI']
 
 filename_email_body = f'Email Body by Date/email_body_{today}.html'
+filename_email_send = f'output.html'
 
 def get_weather():
     print('Enquiring weather...')
@@ -193,8 +194,9 @@ html_content = f"""
 """
 
 
-with open(filename_email_body, 'w') as f:
+with open(filename_email_send, 'w') as f:
     f.write(html_content)
 
-print(f"Email body saved to {filename_email_body}")
+# print(f"Email body saved to {filename_email_body}")
+print(f"Compiled: {filename_email_send}")
 print('DONE.')
