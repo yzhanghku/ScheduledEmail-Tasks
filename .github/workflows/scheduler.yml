@@ -36,10 +36,26 @@ jobs:
     - name: Run script
       run: python HK/compile.py
 
-    - name: Commit and push HTML file
-      run: |
-        git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git config --local user.name "github-actions[bot]"
-        git add HK/*.html
-        git commit -m "Add generated HTML file" || exit 0
-        git push
+    - name: Send email
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 465
+        secure: true
+        
+        username: ${{ secrets.MAIL_USERNAME }}
+        password: ${{ secrets.MAIL_PASSWORD }}
+        
+        subject: Daily Check-in
+        to: ${{ secrets.MAIL_TO }}
+        from: GitHub Actions <${{ secrets.MAIL_USERNAME }}>
+
+        html_body: file://HK/output.html 
+
+    # - name: Commit and push HTML file
+    #   run: |
+    #     git config --local user.email "github-actions[bot]@users.noreply.github.com"
+    #     git config --local user.name "github-actions[bot]"
+    #     git add HK/*.html
+    #     git commit -m "Add generated HTML file" || exit 0
+    #     git push
