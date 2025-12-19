@@ -50,7 +50,7 @@ jobs:
         to: ${{ secrets.MAIL_TO }}
         from: GitHub Actions <${{ secrets.MAIL_USERNAME }}>
 
-        html_body: file://output.html 
+        html_body: file://HK/output.html 
 
     - name: Commit and push HTML file
       run: |
