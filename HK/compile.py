@@ -17,8 +17,8 @@ date_formatted = now.strftime('%-d %b %Y')
 LAT, LON, CITY = map(os.environ.get, ['LAT', 'LON', 'CITY'])
 OWM_API_KEY = os.environ.get('OWM_API_KEY')
 AV_API_KEY = os.environ.get('AV_API_KEY')
-Stock_tickers = ['NVDA', 'ORCL', 'MSTR']
-Crypto_tickers = ['BTC', 'USDT'] # Format: from BTC to USDT
+# Stock_tickers = ['NVDA', 'ORCL', 'MSTR']
+# Crypto_tickers = ['BTC', 'USDT'] # Format: from BTC to USDT
 yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI', '9988.HK', '688795.SS']
 
 # filename_email_body = f'Email Body by Date/email_body_{today}.html'
@@ -51,26 +51,26 @@ feels_like = weather_data['feels_like'] if weather_data else 'N/A'
 desc = weather_data['desc'] if weather_data else ''
 weather_icon = weather_data['weather_icon'] if weather_data else ''
 
-def get_markets(tickers=Stock_tickers):
-    print('Enquiring market data...')
-    market_data = pd.DataFrame()
-    for ticker in tickers:
-        url = f'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={AV_API_KEY}'
-        try:
-            response = requests.get(url, timeout=10).json()
-            today_data = response['Global Quote']
-            closed_price = round(float(today_data['05. price']))
-            change_percent = round(float(today_data['10. change percent'].strip('%')), 1)
-            as_of = today_data['07. latest trading day']
-            new_row = pd.DataFrame([{'Ticker': ticker, 'Price': closed_price, 'Change_pct': change_percent, 'AsOf': as_of}])
-            market_data = pd.concat([market_data, new_row], ignore_index=True)
-        except Exception as e:
-            print(f"{ticker} enquiry failed: {e}")
-            new_row = pd.DataFrame([{'Ticker': ticker, 'Price': None, 'Change_pct': None, 'AsOf': None}])
-            market_data = pd.concat([market_data, new_row], ignore_index=True)
-    return market_data
+# def get_markets(tickers=Stock_tickers):
+#     print('Enquiring market data...')
+#     market_data = pd.DataFrame()
+#     for ticker in tickers:
+#         url = f'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey={AV_API_KEY}'
+#         try:
+#             response = requests.get(url, timeout=10).json()
+#             today_data = response['Global Quote']
+#             closed_price = round(float(today_data['05. price']))
+#             change_percent = round(float(today_data['10. change percent'].strip('%')), 1)
+#             as_of = today_data['07. latest trading day']
+#             new_row = pd.DataFrame([{'Ticker': ticker, 'Price': closed_price, 'Change_pct': change_percent, 'AsOf': as_of}])
+#             market_data = pd.concat([market_data, new_row], ignore_index=True)
+#         except Exception as e:
+#             print(f"{ticker} enquiry failed: {e}")
+#             new_row = pd.DataFrame([{'Ticker': ticker, 'Price': None, 'Change_pct': None, 'AsOf': None}])
+#             market_data = pd.concat([market_data, new_row], ignore_index=True)
+#     return market_data
 
-Stock_data = get_markets()
+# Stock_data = get_markets()
 
 def get_yf(tickers, period='ytd'):
     """
