@@ -154,7 +154,7 @@ def aggregate_returns(df, tickers):
     
     # Format Last column with asterisk for stale data
     summary['Last'] = summary.apply(
-        lambda row: (f"{row['Last']:.1f}*" if row.name in stale_data else f"{row['Last']:.1f}") if row.name == '^TNX' and pd.notna(row['Last'])
+        lambda row: (f"{row['Last']:.1f}%*" if row.name in stale_data else f"{row['Last']:.1f}%") if row.name == '^TNX' and pd.notna(row['Last'])
         else (f"{row['Last']:,.0f}*" if row.name in stale_data and pd.notna(row['Last']) 
         else (f"{row['Last']:,.0f}" if pd.notna(row['Last']) else "N/A")),
         axis=1
@@ -182,6 +182,52 @@ def aggregate_returns(df, tickers):
 
 yf_summary = aggregate_returns(yf_data, yf_tickers)
 print(yf_summary.head(3))
+
+def get_color_for_value(value_str, ticker):
+    """
+    Generate background color for a return value.
+    Returns RGB color string for use in HTML style attribute.
+    """
+    # Handle N/A and dash
+    if value_str in ['-', 'N/A']:
+        return 'background-color: transparent;'
+    
+    # Extract numeric value
+    try:
+        # Remove % sign and convert to float
+        value = float(value_str.replace('%', '').replace('+', ''))
+    except:
+        return 'background-color: transparent;'
+    
+    # Determine the scale based on ticker
+    if ticker == '^TNX':
+        # For ^TNX, use ±0.5 as the cap
+        cap = 0.5
+    else:
+        # For regular tickers, use ±20% as the cap
+        cap = 20.0
+    
+    # Normalize value to -1 to 1 range
+    normalized = max(-1.0, min(1.0, value / cap))
+    
+    # Generate color
+    if normalized > 0:
+        # Green scale: from neutral (240,240,240) to green (0,150,0)
+        intensity = int(normalized * 255)
+        red = max(240 - int(normalized * 240), 0)
+        green = min(240 + int(normalized * 15), 255)
+        blue = max(240 - int(normalized * 240), 0)
+    elif normalized < 0:
+        # Red scale: from neutral (240,240,240) to red (200,0,0)
+        intensity = abs(normalized)
+        red = min(240 + int(intensity * 15), 255)
+        green = max(240 - int(intensity * 240), 0)
+        blue = max(240 - int(intensity * 240), 0)
+    else:
+        # Zero: neutral gray
+        red, green, blue = 240, 240, 240
+    
+    return f'background-color: rgb({red},{green},{blue});'
 
 # Set messages based on day of week
 if day_of_week in ['Saturday', 'Sunday']:
@@ -216,7 +262,7 @@ html_content = f"""
             <td style="padding:35px 30px; font-size:16px; line-height:1.6; color:#4a4a4a; background:#f9f6f0">
               Good <strong>{day_of_week}</strong> morning, {receiver}! It's <strong>{date_formatted}</strong>, and {CITY}'s got {desc}, feeling like {feels_like}°C.<br><br>
                 {market_message}<br><br>
-                <table border="1" style="border-collapse:collapse; width:100%; margin: 0 auto; font-size:14px;"><tr><th style="text-align: center; padding:8px;">Ticker</th><th style="text-align: center; padding:8px;">Last</th><th style="text-align: center; padding:8px;">1D</th><th style="text-align: center; padding:8px;">1M</th><th style="text-align: center; padding:8px;">YTD</th></tr>{''.join([f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};">{ticker}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px;">{row["1D"]}</td><td style="text-align: right; padding:6px;">{row["1M"]}</td><td style="text-align: right; padding:6px;">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
+                <table border="1" style="border-collapse:collapse; width:100%; margin: 0 auto; font-size:14px;"><tr><th style="text-align: center; padding:8px;">Ticker</th><th style="text-align: center; padding:8px;">Last</th><th style="text-align: center; padding:8px;">1D</th><th style="text-align: center; padding:8px;">1M</th><th style="text-align: center; padding:8px;">YTD</th></tr>{''.join([f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};">{ticker}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1D"], ticker)}">{row["1D"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1M"], ticker)}">{row["1M"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["YTD"], ticker)}">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
                 <br><br>
               <p style="margin:0; font-size:20px; color:#d97706; font-style:italic; text-align:center;">
                 {signoff_message}
