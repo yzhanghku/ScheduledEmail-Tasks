@@ -19,7 +19,8 @@ OWM_API_KEY = os.environ.get('OWM_API_KEY')
 AV_API_KEY = os.environ.get('AV_API_KEY')
 # Stock_tickers = ['NVDA', 'ORCL', 'MSTR']
 # Crypto_tickers = ['BTC', 'USDT'] # Format: from BTC to USDT
-yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI', '9988.HK', '688795.SS']
+yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI', '9988.HK', '000300.SS', '688795.SS', '^TNX', 'BTC-USD', 'JPY=X', '^VIX']
+yf_tickers_indent = ['NVDA', 'ORCL', 'MSTR', '9988.HK', '688795.SS']
 
 # filename_email_body = f'Email Body by Date/email_body_{today}.html'
 filename_email_send = f'output.html'
@@ -84,18 +85,18 @@ def get_yf(tickers, period='ytd'):
         DataFrame with historical price data
     """
     if period == '1d':
-        data = yf.download(tickers, period='1d')
+        data = yf.download(tickers, period='1d', progress=False)
     elif period == '1mo':
-        data = yf.download(tickers, period='1mo')
+        data = yf.download(tickers, period='1mo', progress=False)
     elif period == 'ytd':
         # Get last trading day of previous year
         prev_year = dt.datetime.now().year - 1
         dec_start = f"{prev_year}-12-20"
         dec_end = f"{prev_year}-12-31"
-        dec_data = yf.download(tickers, start=dec_start, end=dec_end)
+        dec_data = yf.download(tickers, start=dec_start, end=dec_end, keepna=True)
         last_trading_day = dec_data.index[-1].strftime('%Y-%m-%d')
         
-        data = yf.download(tickers, start=last_trading_day)
+        data = yf.download(tickers, start=last_trading_day, keepna=True)
     else:
         raise ValueError("period must be '1d', '1mo', or 'ytd'")
     
@@ -107,8 +108,18 @@ yf_data = get_yf(yf_tickers, period='ytd')
 def aggregate_returns(df, tickers):
     close = df['Close']
     
-    # Last price
-    last = close.iloc[-1]
+    # Last price - handle missing values by going back in time
+    last = close.iloc[-1].copy()
+    stale_data = {}  # Track which tickers have stale data
+    
+    for ticker in tickers:
+        if pd.isna(last[ticker]):
+            # Search backwards for the first non-missing value
+            for i in range(len(close) - 1, -1, -1):
+                if pd.notna(close.iloc[i][ticker]):
+                    last[ticker] = close.iloc[i][ticker]
+                    stale_data[ticker] = True
+                    break
     
     # 1D return
     return_1d = (close.iloc[-1] / close.iloc[-2] - 1) * 100
@@ -124,6 +135,12 @@ def aggregate_returns(df, tickers):
     close_ytd = prev_year_data.iloc[-1]
     return_ytd = (close.iloc[-1] / close_ytd - 1) * 100
     
+    # For ^TNX, calculate absolute differences instead
+    if '^TNX' in tickers:
+        return_1d['^TNX'] = close.iloc[-1]['^TNX'] - close.iloc[-2]['^TNX']
+        return_1m['^TNX'] = close.iloc[-1]['^TNX'] - close_1m['^TNX']
+        return_ytd['^TNX'] = close.iloc[-1]['^TNX'] - close_ytd['^TNX']
+    
     # Build summary table
     summary = pd.DataFrame({
         'Last': last,
@@ -135,14 +152,44 @@ def aggregate_returns(df, tickers):
     # Reorder to match original ticker order
     summary = summary.reindex(tickers)
     
-    summary['1D'] = summary['1D'].apply(lambda x: f"{x:.1f}%")
-    summary['1M'] = summary['1M'].apply(lambda x: f"{x:.1f}%")
-    summary['YTD'] = summary['YTD'].apply(lambda x: f"{x:.0f}%")
+    # Format Last column with asterisk for stale data
+    summary['Last'] = summary.apply(
+        lambda row: (f"{row['Last']:.1f}*" if row.name in stale_data else f"{row['Last']:.1f}") if row.name == '^TNX' and pd.notna(row['Last'])
+        else (f"{row['Last']:,.0f}*" if row.name in stale_data and pd.notna(row['Last']) 
+        else (f"{row['Last']:,.0f}" if pd.notna(row['Last']) else "N/A")),
+        axis=1
+    )
+    
+    # Format percentages, handling NaN values
+    # For ^TNX, format as absolute difference instead of percentage
+    summary['1D'] = summary.apply(
+        lambda row: f"{row['1D']:+.2f}" if row.name == '^TNX' and pd.notna(row['1D'])
+        else (f"{row['1D']:.1f}%" if pd.notna(row['1D']) else "-"),
+        axis=1
+    )
+    summary['1M'] = summary.apply(
+        lambda row: f"{row['1M']:+.2f}" if row.name == '^TNX' and pd.notna(row['1M'])
+        else (f"{row['1M']:.1f}%" if pd.notna(row['1M']) else "-"),
+        axis=1
+    )
+    summary['YTD'] = summary.apply(
+        lambda row: f"{row['YTD']:+.2f}" if row.name == '^TNX' and pd.notna(row['YTD'])
+        else (f"{row['YTD']:.0f}%" if pd.notna(row['YTD']) else "-"),
+        axis=1
+    )
     
     return summary
 
 yf_summary = aggregate_returns(yf_data, yf_tickers)
+print(yf_summary.head(3))
 
+# Set messages based on day of week
+if day_of_week in ['Saturday', 'Sunday']:
+    market_message = "Most markets are closed:"
+    signoff_message = "Enjoy your weekend!"
+else:
+    market_message = "Market update:"
+    signoff_message = "Your day starts now — own it!"
 
 print('Compiling email body...')
 html_content = f"""
@@ -168,11 +215,11 @@ html_content = f"""
           <tr>
             <td style="padding:35px 30px; font-size:16px; line-height:1.6; color:#4a4a4a; background:#f9f6f0">
               Good <strong>{day_of_week}</strong> morning, {receiver}! It's <strong>{date_formatted}</strong>, and {CITY}'s got {desc}, feeling like {feels_like}°C.<br><br>
-                Market update:<br><br>
-                <table border="1" style="border-collapse:collapse; width:100%; margin: 0 auto; font-size:14px;"><tr><th style="text-align: center; padding:8px;">Ticker</th><th style="text-align: center; padding:8px;">Last</th><th style="text-align: center; padding:8px;">1D</th><th style="text-align: center; padding:8px;">1M</th><th style="text-align: center; padding:8px;">YTD</th></tr>{''.join([f'<tr><td style="text-align: center; padding:6px;">{ticker}</td><td style="text-align: center; padding:6px;">{row["Last"]:,.0f}</td><td style="text-align: center; padding:6px;">{row["1D"]}</td><td style="text-align: center; padding:6px;">{row["1M"]}</td><td style="text-align: center; padding:6px;">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
+                {market_message}<br><br>
+                <table border="1" style="border-collapse:collapse; width:100%; margin: 0 auto; font-size:14px;"><tr><th style="text-align: center; padding:8px;">Ticker</th><th style="text-align: center; padding:8px;">Last</th><th style="text-align: center; padding:8px;">1D</th><th style="text-align: center; padding:8px;">1M</th><th style="text-align: center; padding:8px;">YTD</th></tr>{''.join([f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};">{ticker}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px;">{row["1D"]}</td><td style="text-align: right; padding:6px;">{row["1M"]}</td><td style="text-align: right; padding:6px;">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
                 <br><br>
               <p style="margin:0; font-size:20px; color:#d97706; font-style:italic; text-align:center;">
-                Your day starts now — own it!
+                {signoff_message}
               </p>
             </td>
           </tr>
