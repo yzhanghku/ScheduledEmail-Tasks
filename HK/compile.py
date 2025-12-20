@@ -19,8 +19,8 @@ OWM_API_KEY = os.environ.get('OWM_API_KEY')
 AV_API_KEY = os.environ.get('AV_API_KEY')
 # Stock_tickers = ['NVDA', 'ORCL', 'MSTR']
 # Crypto_tickers = ['BTC', 'USDT'] # Format: from BTC to USDT
-yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI', '9988.HK', '000300.SS', '688795.SS', '^TNX', 'BTC-USD', 'JPY=X', '^VIX']
-yf_tickers_indent = ['NVDA', 'ORCL', 'MSTR', '9988.HK', '688795.SS']
+yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI', '9988.HK', '0017.HK', '2202.HK', '000300.SS', '688795.SS', '^TNX', 'BTC-USD', 'JPY=X', '^VIX']
+yf_tickers_indent = ['NVDA', 'ORCL', 'MSTR', '9988.HK', '0017.HK', '2202.HK', '688795.SS']
 
 # filename_email_body = f'Email Body by Date/email_body_{today}.html'
 filename_email_send = f'output.html'
