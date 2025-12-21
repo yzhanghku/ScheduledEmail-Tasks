@@ -230,9 +230,15 @@ def get_color_for_value(value_str, ticker):
     return f'background-color: rgb({red},{green},{blue});'
 
 # Set messages based on day of week
-if day_of_week in ['Saturday', 'Sunday']:
+if day_of_week == 'Sunday':
     market_message = "Most markets are closed:"
     signoff_message = "Enjoy your weekend!"
+elif day_of_week == 'Saturday':
+    market_message = "Market roundup:"
+    signoff_message = "Enjoy your weekend!"
+elif day_of_week == 'Monday':
+    market_message = "Markets will soon open. Meanwhile:"
+    signoff_message = "Wish you a great week ahead!"
 else:
     market_message = "Market update:"
     signoff_message = "Your day starts now — own it!"
