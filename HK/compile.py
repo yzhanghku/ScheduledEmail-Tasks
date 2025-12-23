@@ -22,7 +22,8 @@ AV_API_KEY = os.environ.get('AV_API_KEY')
 yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI', '9988.HK', '0017.HK', '2202.HK', '000300.SS', '688795.SS', '^TNX', 'BTC-USD', 'JPY=X', '^VIX']
 yf_tickers_indent = ['NVDA', 'ORCL', 'MSTR', '9988.HK', '0017.HK', '2202.HK', '688795.SS']
 yf_ticker_urls = {
-    '^GSPC': 'https://www.spglobal.com/spdji/en/indices/equity/sp-500/#overview'
+    '^GSPC': 'https://www.spglobal.com/spdji/en/indices/equity/sp-500/#overview',
+    '^HSI': 'https://www.hsi.com.hk/eng'
 }
 
 # filename_email_body = f'Email Body by Date/email_body_{today}.html'
