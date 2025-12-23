@@ -21,6 +21,9 @@ AV_API_KEY = os.environ.get('AV_API_KEY')
 # Crypto_tickers = ['BTC', 'USDT'] # Format: from BTC to USDT
 yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI', '9988.HK', '0017.HK', '2202.HK', '000300.SS', '688795.SS', '^TNX', 'BTC-USD', 'JPY=X', '^VIX']
 yf_tickers_indent = ['NVDA', 'ORCL', 'MSTR', '9988.HK', '0017.HK', '2202.HK', '688795.SS']
+yf_ticker_urls = {
+    '^GSPC': 'https://www.spglobal.com/spdji/en/indices/equity/sp-500/#overview'
+}
 
 # filename_email_body = f'Email Body by Date/email_body_{today}.html'
 filename_email_send = f'output.html'
@@ -271,16 +274,16 @@ def get_color_for_value(value_str, ticker):
 
 # Set messages based on day of week
 if day_of_week == 'Sunday':
-    market_message = "Most markets are closed:"
+    market_message = "Most markets are closed (* for delayed):"
     signoff_message = "Enjoy your weekend!"
 elif day_of_week == 'Saturday':
     market_message = "Market roundup:"
     signoff_message = "Enjoy your weekend!"
 elif day_of_week == 'Monday':
-    market_message = "Markets will soon open. Meanwhile:"
+    market_message = "Markets will soon open (* for delayed). Meanwhile:"
     signoff_message = "Wish you a great week ahead!"
 else:
-    market_message = "Market update:"
+    market_message = "Market update (* for delayed):"
     signoff_message = "Your day starts now — own it!"
 
 print('Compiling email body...')
@@ -308,7 +311,7 @@ html_content = f"""
             <td style="padding:35px 30px; font-size:16px; line-height:1.6; color:#4a4a4a; background:#f9f6f0">
               Good <strong>{day_of_week}</strong> morning, {receiver}! It's <strong>{date_formatted}</strong>, and {CITY}'s got {desc}, feeling like {feels_like}°C.<br><br>
                 {market_message}<br><br>
-                <table border="1" style="border-collapse:collapse; width:100%; margin: 0 auto; font-size:14px;"><tr><th style="text-align: center; padding:8px;">Ticker</th><th style="text-align: center; padding:8px;">Last</th><th style="text-align: center; padding:8px;">1D</th><th style="text-align: center; padding:8px;">MTD</th><th style="text-align: center; padding:8px;">YTD</th></tr>{''.join([f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};">{ticker}{"*" if ticker in stale_tickers else ""}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1D"], ticker)}">{row["1D"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["MTD"], ticker)}">{row["MTD"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["YTD"], ticker)}">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
+                <table border="1" style="border-collapse:collapse; width:100%; margin: 0 auto; font-size:14px;"><tr><th style="text-align: center; padding:8px;">Ticker</th><th style="text-align: center; padding:8px;">Last</th><th style="text-align: center; padding:8px;">1D</th><th style="text-align: center; padding:8px;">MTD</th><th style="text-align: center; padding:8px;">YTD</th></tr>{''.join([f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};"><a href="{yf_ticker_urls[ticker]}" style="color: #0066cc; text-decoration: none;">{ticker}</a>{"*" if ticker in stale_tickers else ""}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1D"], ticker)}">{row["1D"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["MTD"], ticker)}">{row["MTD"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["YTD"], ticker)}">{row["YTD"]}</td></tr>' if ticker in yf_ticker_urls else f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};">{ticker}{"*" if ticker in stale_tickers else ""}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1D"], ticker)}">{row["1D"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["MTD"], ticker)}">{row["MTD"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["YTD"], ticker)}">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
                 <br><br>
               <p style="margin:0; font-size:20px; color:#d97706; font-style:italic; text-align:center;">
                 {signoff_message}
