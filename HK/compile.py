@@ -103,7 +103,9 @@ def get_yf(tickers, period='ytd'):
     return data
 
 yf_data = get_yf(yf_tickers, period='ytd')
-# print(yf_data['Close'])
+# print("Index type:", type(yf_data.index))
+# print("Sample index values:", yf_data.index[:5])
+# print(yf_data['Close'].tail(30))
 
 def aggregate_returns(df, tickers):
     close = df['Close']
@@ -121,42 +123,80 @@ def aggregate_returns(df, tickers):
                     stale_data[ticker] = True
                     break
     
-    # 1D return
-    return_1d = (close.iloc[-1] / close.iloc[-2] - 1) * 100
+    # 1D return - search backwards for missing values
+    close_1d = close.iloc[-2].copy()
+    for ticker in tickers:
+        if pd.isna(close_1d[ticker]):
+            # Search backwards for the first non-missing value
+            for i in range(len(close) - 2, -1, -1):
+                if pd.notna(close.iloc[i][ticker]):
+                    close_1d[ticker] = close.iloc[i][ticker]
+                    break
     
-    # 1M return - find the closest trading day to one month ago
-    one_month_ago = dt.datetime.now() - relativedelta(months=1)
-    close_1m = close[close.index <= one_month_ago].iloc[-1]
-    return_1m = (close.iloc[-1] / close_1m - 1) * 100
+    return_1d = (last / close_1d - 1) * 100
+    
+    # MTD return - find last trading day of previous month
+    current_date = pd.Timestamp.now()
+    prev_month_first = (current_date.replace(day=1) - pd.Timedelta(days=1)).replace(day=1)
+    prev_month = prev_month_first.month
+    prev_month_year = prev_month_first.year
+    
+    # Get all data from previous month and take last available day
+    prev_month_data = close[(close.index.year == prev_month_year) & (close.index.month == prev_month)]
+    
+    if not prev_month_data.empty:
+        close_mtd = prev_month_data.iloc[-1].copy()
+        # Search backwards for tickers with missing data in last month
+        for ticker in tickers:
+            if pd.isna(close_mtd[ticker]):
+                for i in range(len(prev_month_data) - 1, -1, -1):
+                    if pd.notna(prev_month_data.iloc[i][ticker]):
+                        close_mtd[ticker] = prev_month_data.iloc[i][ticker]
+                        break
+    else:
+        close_mtd = close.iloc[0].copy()
+    
+    return_mtd = (last / close_mtd - 1) * 100
     
     # YTD return - find last trading day of previous year
     prev_year = dt.datetime.now().year - 1
     prev_year_data = close[close.index.year == prev_year]
-    close_ytd = prev_year_data.iloc[-1]
-    return_ytd = (close.iloc[-1] / close_ytd - 1) * 100
+    
+    if not prev_year_data.empty:
+        close_ytd = prev_year_data.iloc[-1].copy()
+        # Search backwards for tickers with missing data in previous year
+        for ticker in tickers:
+            if pd.isna(close_ytd[ticker]):
+                for i in range(len(prev_year_data) - 1, -1, -1):
+                    if pd.notna(prev_year_data.iloc[i][ticker]):
+                        close_ytd[ticker] = prev_year_data.iloc[i][ticker]
+                        break
+    else:
+        close_ytd = close.iloc[0].copy()
+    
+    return_ytd = (last / close_ytd - 1) * 100
     
     # For ^TNX, calculate absolute differences instead
     if '^TNX' in tickers:
-        return_1d['^TNX'] = close.iloc[-1]['^TNX'] - close.iloc[-2]['^TNX']
-        return_1m['^TNX'] = close.iloc[-1]['^TNX'] - close_1m['^TNX']
-        return_ytd['^TNX'] = close.iloc[-1]['^TNX'] - close_ytd['^TNX']
+        return_1d['^TNX'] = last['^TNX'] - close_1d['^TNX']
+        return_mtd['^TNX'] = last['^TNX'] - close_mtd['^TNX']
+        return_ytd['^TNX'] = last['^TNX'] - close_ytd['^TNX']
     
     # Build summary table
     summary = pd.DataFrame({
         'Last': last,
         '1D': return_1d,
-        '1M': return_1m,
+        'MTD': return_mtd,
         'YTD': return_ytd
     })
     
     # Reorder to match original ticker order
     summary = summary.reindex(tickers)
     
-    # Format Last column with asterisk for stale data
+    # Format Last column without asterisk
     summary['Last'] = summary.apply(
-        lambda row: (f"{row['Last']:.1f}%*" if row.name in stale_data else f"{row['Last']:.1f}%") if row.name == '^TNX' and pd.notna(row['Last'])
-        else (f"{row['Last']:,.0f}*" if row.name in stale_data and pd.notna(row['Last']) 
-        else (f"{row['Last']:,.0f}" if pd.notna(row['Last']) else "N/A")),
+        lambda row: f"{row['Last']:.1f}%" if row.name == '^TNX' and pd.notna(row['Last'])
+        else (f"{row['Last']:,.0f}" if pd.notna(row['Last']) else "N/A"),
         axis=1
     )
     
@@ -167,9 +207,9 @@ def aggregate_returns(df, tickers):
         else (f"{row['1D']:.1f}%" if pd.notna(row['1D']) else "-"),
         axis=1
     )
-    summary['1M'] = summary.apply(
-        lambda row: f"{row['1M']:+.2f}" if row.name == '^TNX' and pd.notna(row['1M'])
-        else (f"{row['1M']:.1f}%" if pd.notna(row['1M']) else "-"),
+    summary['MTD'] = summary.apply(
+        lambda row: f"{row['MTD']:+.2f}" if row.name == '^TNX' and pd.notna(row['MTD'])
+        else (f"{row['MTD']:.1f}%" if pd.notna(row['MTD']) else "-"),
         axis=1
     )
     summary['YTD'] = summary.apply(
@@ -178,9 +218,9 @@ def aggregate_returns(df, tickers):
         axis=1
     )
     
-    return summary
+    return summary, stale_data
 
-yf_summary = aggregate_returns(yf_data, yf_tickers)
+yf_summary, stale_tickers = aggregate_returns(yf_data, yf_tickers)
 print(yf_summary.head(3))
 
 def get_color_for_value(value_str, ticker):
@@ -268,7 +308,7 @@ html_content = f"""
             <td style="padding:35px 30px; font-size:16px; line-height:1.6; color:#4a4a4a; background:#f9f6f0">
               Good <strong>{day_of_week}</strong> morning, {receiver}! It's <strong>{date_formatted}</strong>, and {CITY}'s got {desc}, feeling like {feels_like}°C.<br><br>
                 {market_message}<br><br>
-                <table border="1" style="border-collapse:collapse; width:100%; margin: 0 auto; font-size:14px;"><tr><th style="text-align: center; padding:8px;">Ticker</th><th style="text-align: center; padding:8px;">Last</th><th style="text-align: center; padding:8px;">1D</th><th style="text-align: center; padding:8px;">1M</th><th style="text-align: center; padding:8px;">YTD</th></tr>{''.join([f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};">{ticker}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1D"], ticker)}">{row["1D"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1M"], ticker)}">{row["1M"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["YTD"], ticker)}">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
+                <table border="1" style="border-collapse:collapse; width:100%; margin: 0 auto; font-size:14px;"><tr><th style="text-align: center; padding:8px;">Ticker</th><th style="text-align: center; padding:8px;">Last</th><th style="text-align: center; padding:8px;">1D</th><th style="text-align: center; padding:8px;">MTD</th><th style="text-align: center; padding:8px;">YTD</th></tr>{''.join([f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};">{ticker}{"*" if ticker in stale_tickers else ""}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1D"], ticker)}">{row["1D"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["MTD"], ticker)}">{row["MTD"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["YTD"], ticker)}">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
                 <br><br>
               <p style="margin:0; font-size:20px; color:#d97706; font-style:italic; text-align:center;">
                 {signoff_message}
