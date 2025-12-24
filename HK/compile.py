@@ -109,7 +109,7 @@ def get_yf(tickers, period='ytd'):
 yf_data = get_yf(yf_tickers, period='ytd')
 # print("Index type:", type(yf_data.index))
 # print("Sample index values:", yf_data.index[:5])
-# print(yf_data['Close'].tail(30))
+print(yf_data['Close'].tail(3))
 
 def aggregate_returns(df, tickers):
     close = df['Close']
