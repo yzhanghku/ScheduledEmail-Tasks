@@ -4,6 +4,7 @@ from dateutil.relativedelta import relativedelta
 import requests
 import pandas as pd
 import yfinance as yf
+import holidays
 
 sender = os.environ.get('SENDER_NAME')
 receiver = os.environ.get('RECEIVER_NAME')
@@ -14,6 +15,14 @@ now = dt.datetime.now()
 today = now.strftime('%Y%m%d')
 day_of_week = now.strftime('%A')
 date_formatted = now.strftime('%-d %b %Y')
+current_date = now.date()
+
+# Check for holidays
+us_holidays = holidays.US()
+hk_holidays = holidays.HK()
+is_holiday = current_date in us_holidays or current_date in hk_holidays
+holiday_name = us_holidays.get(current_date) or hk_holidays.get(current_date)
+
 LAT, LON, CITY = map(os.environ.get, ['LAT', 'LON', 'CITY'])
 OWM_API_KEY = os.environ.get('OWM_API_KEY')
 AV_API_KEY = os.environ.get('AV_API_KEY')
@@ -207,8 +216,9 @@ def aggregate_returns(df, tickers):
     # Format percentages, handling NaN values
     # For ^TNX, format as absolute difference instead of percentage
     summary['1D'] = summary.apply(
-        lambda row: f"{row['1D']:+.2f}" if row.name == '^TNX' and pd.notna(row['1D'])
-        else (f"{row['1D']:.1f}%" if pd.notna(row['1D']) else "-"),
+        lambda row: "-" if row.name == '^TNX' and pd.notna(row['1D']) and row['1D'] == 0.00
+        else (f"{row['1D']:+.2f}" if row.name == '^TNX' and pd.notna(row['1D'])
+        else ("-" if pd.notna(row['1D']) and row['1D'] == 0.0 else (f"{row['1D']:.1f}%" if pd.notna(row['1D']) else "-"))),
         axis=1
     )
     summary['MTD'] = summary.apply(
@@ -273,19 +283,30 @@ def get_color_for_value(value_str, ticker):
     
     return f'background-color: rgb({red},{green},{blue});'
 
-# Set messages based on day of week
+# Set greeting and signoff based on day of week and holidays
+if is_holiday and day_of_week not in ['Saturday', 'Sunday']:
+    greeting_suffix = f" It's {holiday_name} today!"
+    signoff_message = "Enjoy your holiday!"
+else:
+    greeting_suffix = ""
+    if day_of_week == 'Sunday':
+        signoff_message = "Enjoy your weekend!"
+    elif day_of_week == 'Saturday':
+        signoff_message = "Enjoy your weekend!"
+    elif day_of_week == 'Monday':
+        signoff_message = "Wish you a great week ahead!"
+    else:
+        signoff_message = "Your day starts now — own it!"
+
+# Set market message based on day of week
 if day_of_week == 'Sunday':
     market_message = "Most markets are closed (* for delayed):"
-    signoff_message = "Enjoy your weekend!"
 elif day_of_week == 'Saturday':
     market_message = "Market roundup:"
-    signoff_message = "Enjoy your weekend!"
 elif day_of_week == 'Monday':
     market_message = "Markets will soon open (* for delayed). Meanwhile:"
-    signoff_message = "Wish you a great week ahead!"
 else:
     market_message = "Market update (* for delayed):"
-    signoff_message = "Your day starts now — own it!"
 
 print('Compiling email body...')
 html_content = f"""
@@ -310,7 +331,7 @@ html_content = f"""
           <!-- Body -->
           <tr>
             <td style="padding:35px 30px; font-size:16px; line-height:1.6; color:#4a4a4a; background:#f9f6f0">
-              Good <strong>{day_of_week}</strong> morning, {receiver}! It's <strong>{date_formatted}</strong>, and {CITY}'s got {desc}, feeling like {feels_like}°C.<br><br>
+              Good <strong>{day_of_week}</strong> morning, {receiver}! It's <strong>{date_formatted}</strong>, and {CITY}'s got {desc}, feeling like {feels_like}°C.{greeting_suffix}<br><br>
                 {market_message}<br><br>
                 <table border="1" style="border-collapse:collapse; width:100%; margin: 0 auto; font-size:14px;"><tr><th style="text-align: center; padding:8px;">Ticker</th><th style="text-align: center; padding:8px;">Last</th><th style="text-align: center; padding:8px;">1D</th><th style="text-align: center; padding:8px;">MTD</th><th style="text-align: center; padding:8px;">YTD</th></tr>{''.join([f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};"><a href="{yf_ticker_urls[ticker]}" style="color: #0066cc; text-decoration: none;">{ticker}</a>{"*" if ticker in stale_tickers else ""}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1D"], ticker)}">{row["1D"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["MTD"], ticker)}">{row["MTD"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["YTD"], ticker)}">{row["YTD"]}</td></tr>' if ticker in yf_ticker_urls else f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};">{ticker}{"*" if ticker in stale_tickers else ""}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1D"], ticker)}">{row["1D"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["MTD"], ticker)}">{row["MTD"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["YTD"], ticker)}">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
                 <br><br>
