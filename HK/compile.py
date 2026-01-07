@@ -189,11 +189,15 @@ def aggregate_returns(df, tickers):
     
     return_ytd = (last / close_ytd - 1) * 100
     
-    # For ^TNX, calculate absolute differences instead
+    # For ^TNX and ^VIX, calculate absolute differences instead
     if '^TNX' in tickers:
         return_1d['^TNX'] = last['^TNX'] - close_1d['^TNX']
         return_mtd['^TNX'] = last['^TNX'] - close_mtd['^TNX']
         return_ytd['^TNX'] = last['^TNX'] - close_ytd['^TNX']
+    if '^VIX' in tickers:
+        return_1d['^VIX'] = last['^VIX'] - close_1d['^VIX']
+        return_mtd['^VIX'] = last['^VIX'] - close_mtd['^VIX']
+        return_ytd['^VIX'] = last['^VIX'] - close_ytd['^VIX']
     
     # Build summary table
     summary = pd.DataFrame({
@@ -208,27 +212,27 @@ def aggregate_returns(df, tickers):
     
     # Format Last column without asterisk
     summary['Last'] = summary.apply(
-        lambda row: f"{row['Last']:.1f}%" if row.name == '^TNX' and pd.notna(row['Last'])
+        lambda row: f"{row['Last']:.2f}" if row.name in ['^TNX', '^VIX'] and pd.notna(row['Last'])
         else (f"{row['Last']:,.0f}" if pd.notna(row['Last']) else "N/A"),
         axis=1
     )
     
     # Format percentages, handling NaN values
-    # For ^TNX, format as absolute difference instead of percentage
+    # For ^TNX and ^VIX, format as absolute difference instead of percentage
     summary['1D'] = summary.apply(
-        lambda row: "-" if row.name == '^TNX' and pd.notna(row['1D']) and row['1D'] == 0.00
-        else (f"{row['1D']:+.2f}" if row.name == '^TNX' and pd.notna(row['1D'])
-        else ("-" if pd.notna(row['1D']) and row['1D'] == 0.0 else (f"{row['1D']:.1f}%" if pd.notna(row['1D']) else "-"))),
+        lambda row: "-" if row.name in ['^TNX', '^VIX'] and pd.notna(row['1D']) and row['1D'] == 0.00
+        else (f"{row['1D']:+.2f}" if row.name in ['^TNX', '^VIX'] and pd.notna(row['1D'])
+        else ("-" if pd.notna(row['1D']) and row['1D'] == 0.00 else (f"{row['1D']:.1f}%" if pd.notna(row['1D']) else "-"))),
         axis=1
     )
     summary['MTD'] = summary.apply(
-        lambda row: f"{row['MTD']:+.2f}" if row.name == '^TNX' and pd.notna(row['MTD'])
-        else (f"{row['MTD']:.1f}%" if pd.notna(row['MTD']) else "-"),
+        lambda row: f"{row['MTD']:+.2f}" if row.name in ['^TNX', '^VIX'] and pd.notna(row['MTD'])
+        else ("-" if pd.notna(row['MTD']) and row['MTD'] == 0.00 else (f"{row['MTD']:.1f}%" if pd.notna(row['MTD']) else "-")),
         axis=1
     )
     summary['YTD'] = summary.apply(
-        lambda row: f"{row['YTD']:+.2f}" if row.name == '^TNX' and pd.notna(row['YTD'])
-        else (f"{row['YTD']:.0f}%" if pd.notna(row['YTD']) else "-"),
+        lambda row: f"{row['YTD']:+.2f}" if row.name in ['^TNX', '^VIX'] and pd.notna(row['YTD'])
+        else ("-" if pd.notna(row['YTD']) and row['YTD'] == 0.00 else (f"{row['YTD']:.0f}%" if pd.notna(row['YTD']) else "-")),
         axis=1
     )
     
@@ -257,12 +261,19 @@ def get_color_for_value(value_str, ticker):
     if ticker == '^TNX':
         # For ^TNX, use ±0.5 as the cap
         cap = 0.5
+    elif ticker == '^VIX':
+        # For ^VIX, use ±10 as the cap
+        cap = 10.0
     else:
         # For regular tickers, use ±20% as the cap
         cap = 20.0
     
     # Normalize value to -1 to 1 range
     normalized = max(-1.0, min(1.0, value / cap))
+    
+    # For ^TNX and ^VIX, reverse the color logic (increases are red, decreases are green)
+    if ticker in ['^TNX', '^VIX']:
+        normalized = -normalized
     
     # Generate color
     if normalized > 0:
@@ -284,11 +295,11 @@ def get_color_for_value(value_str, ticker):
     return f'background-color: rgb({red},{green},{blue});'
 
 # Set greeting and signoff based on day of week and holidays
-if is_holiday and day_of_week not in ['Saturday', 'Sunday']:
-    greeting_suffix = f" It's {holiday_name} today!"
+if is_holiday:
+    holiday_suffix = f" {holiday_name}"
     signoff_message = "Enjoy your holiday!"
 else:
-    greeting_suffix = ""
+    holiday_suffix = ""
     if day_of_week == 'Sunday':
         signoff_message = "Enjoy your weekend!"
     elif day_of_week == 'Saturday':
@@ -298,15 +309,7 @@ else:
     else:
         signoff_message = "Your day starts now — own it!"
 
-# Set market message based on day of week
-if day_of_week == 'Sunday':
-    market_message = "Most markets are closed (* for delayed):"
-elif day_of_week == 'Saturday':
-    market_message = "Market roundup:"
-elif day_of_week == 'Monday':
-    market_message = "Markets will soon open (* for delayed). Meanwhile:"
-else:
-    market_message = "Market update (* for delayed):"
+market_message = "Here's your customised Market Roundup (* for delayed):"
 
 print('Compiling email body...')
 html_content = f"""
@@ -331,7 +334,7 @@ html_content = f"""
           <!-- Body -->
           <tr>
             <td style="padding:35px 30px; font-size:16px; line-height:1.6; color:#4a4a4a; background:#f9f6f0">
-              Good <strong>{day_of_week}</strong> morning, {receiver}! It's <strong>{date_formatted}</strong>, and {CITY}'s got {desc}, feeling like {feels_like}°C.{greeting_suffix}<br><br>
+              Good <strong>{day_of_week}</strong> morning, {receiver}! It's <strong>{date_formatted}</strong></strong>{holiday_suffix}</strong>, and {CITY}'s got {desc}, feeling like {feels_like}°C.<br><br>
                 {market_message}<br><br>
                 <table border="1" style="border-collapse:collapse; width:100%; margin: 0 auto; font-size:14px;"><tr><th style="text-align: center; padding:8px;">Ticker</th><th style="text-align: center; padding:8px;">Last</th><th style="text-align: center; padding:8px;">1D</th><th style="text-align: center; padding:8px;">MTD</th><th style="text-align: center; padding:8px;">YTD</th></tr>{''.join([f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};"><a href="{yf_ticker_urls[ticker]}" style="color: #0066cc; text-decoration: none;">{ticker}</a>{"*" if ticker in stale_tickers else ""}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1D"], ticker)}">{row["1D"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["MTD"], ticker)}">{row["MTD"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["YTD"], ticker)}">{row["YTD"]}</td></tr>' if ticker in yf_ticker_urls else f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};">{ticker}{"*" if ticker in stale_tickers else ""}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1D"], ticker)}">{row["1D"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["MTD"], ticker)}">{row["MTD"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["YTD"], ticker)}">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
                 <br><br>
