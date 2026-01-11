@@ -28,11 +28,16 @@ OWM_API_KEY = os.environ.get('OWM_API_KEY')
 AV_API_KEY = os.environ.get('AV_API_KEY')
 # Stock_tickers = ['NVDA', 'ORCL', 'MSTR']
 # Crypto_tickers = ['BTC', 'USDT'] # Format: from BTC to USDT
-yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI', '9988.HK', '0017.HK', '2202.HK', '000300.SS', '688256.SS', '688795.SS', '688802.SS', 'BTC-USD', 'JPY=X', '^TNX', '^VIX']
+yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI', '9988.HK', '0017.HK', '2202.HK', '000300.SS', '688256.SS', '688795.SS', '688802.SS', '^N225', '^KS11', '^AXJO', '^TWII', '^STOXX50E', 'BTC-USD', 'JPY=X', '^TNX', '^VIX', 'SPAX.PVT', 'OPAI.PVT', 'ANTH.PVT', 'XAAI.PVT']
 yf_tickers_indent = ['NVDA', 'ORCL', 'MSTR', '9988.HK', '0017.HK', '2202.HK', '688256.SS', '688795.SS', '688802.SS']
 yf_ticker_urls = {
     '^GSPC': 'https://www.spglobal.com/spdji/en/indices/equity/sp-500/#overview',
-    '^HSI': 'https://www.hsi.com.hk/eng'
+    '^HSI': 'https://www.hsi.com.hk/eng',
+    '0017.HK': 'https://finance.yahoo.com/quote/0017.HK/',
+    '2202.HK': 'https://finance.yahoo.com/quote/2202.HK/',
+    '688256.SS': 'https://finance.yahoo.com/quote/688256.SS/',
+    '688795.SS': 'https://finance.yahoo.com/quote/688795.SS/',
+    '688802.SS': 'https://finance.yahoo.com/quote/688802.SS/'
 }
 
 # filename_email_body = f'Email Body by Date/email_body_{today}.html'
