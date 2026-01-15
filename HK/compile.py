@@ -28,8 +28,8 @@ OWM_API_KEY = os.environ.get('OWM_API_KEY')
 AV_API_KEY = os.environ.get('AV_API_KEY')
 # Stock_tickers = ['NVDA', 'ORCL', 'MSTR']
 # Crypto_tickers = ['BTC', 'USDT'] # Format: from BTC to USDT
-yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI', '9988.HK', '0017.HK', '2202.HK', '000300.SS', '688256.SS', '688795.SS', '688802.SS', '^N225', '^KS11', '^AXJO', '^TWII', '^STOXX50E', 'BTC-USD', 'JPY=X', '^TNX', '^VIX', 'SPAX.PVT', 'OPAI.PVT', 'ANTH.PVT', 'XAAI.PVT']
-yf_tickers_indent = ['NVDA', 'ORCL', 'MSTR', '9988.HK', '0017.HK', '2202.HK', '688256.SS', '688795.SS', '688802.SS']
+yf_tickers = ['^GSPC', 'NVDA', 'ORCL', 'MSTR', '^HSI', '9988.HK', '0017.HK', '2202.HK', '000300.SS', '688256.SS', '688795.SS', '688802.SS', '^N225', '^KS11', '000660.KS', '^AXJO', '^TWII', 'TSM', '^STOXX50E', 'ASML', 'BTC-USD', 'JPY=X', 'GC=F', 'CL=F', '^TNX', '^VIX', 'SPAX.PVT', 'OPAI.PVT', 'ANTH.PVT', 'XAAI.PVT']
+yf_tickers_indent = ['NVDA', 'ORCL', 'MSTR', '9988.HK', '0017.HK', '2202.HK', '688256.SS', '688795.SS', '688802.SS', '000660.KS', 'TSM', 'ASML']
 yf_ticker_urls = {
     '^GSPC': 'https://www.spglobal.com/spdji/en/indices/equity/sp-500/#overview',
     '^HSI': 'https://www.hsi.com.hk/eng',
@@ -138,7 +138,9 @@ def aggregate_returns(df, tickers):
             for i in range(len(close) - 1, -1, -1):
                 if pd.notna(close.iloc[i][ticker]):
                     last[ticker] = close.iloc[i][ticker]
-                    stale_data[ticker] = True
+                    # Mark as stale if the last valid price is earlier than yesterday (i.e., i < len(close) - 2)
+                    if i < len(close) - 2:
+                        stale_data[ticker] = True
                     break
     
     # 1D return - search backwards for missing values
@@ -232,7 +234,7 @@ def aggregate_returns(df, tickers):
     )
     summary['MTD'] = summary.apply(
         lambda row: f"{row['MTD']:+.2f}" if row.name in ['^TNX', '^VIX'] and pd.notna(row['MTD'])
-        else ("-" if pd.notna(row['MTD']) and row['MTD'] == 0.00 else (f"{row['MTD']:.1f}%" if pd.notna(row['MTD']) else "-")),
+        else ("-" if pd.notna(row['MTD']) and row['MTD'] == 0.00 else (f"{row['MTD']:.0f}%" if pd.notna(row['MTD']) else "-")),
         axis=1
     )
     summary['YTD'] = summary.apply(
@@ -314,7 +316,7 @@ else:
     else:
         signoff_message = "Your day starts now — own it!"
 
-market_message = "Here's your customised Market Roundup (* for delayed):"
+market_message = "Here's your customised Market Roundup:"
 
 print('Compiling email body...')
 html_content = f"""
@@ -342,6 +344,7 @@ html_content = f"""
               Good <strong>{day_of_week}</strong> morning, {receiver}! It's <strong>{date_formatted}</strong></strong>{holiday_suffix}</strong>, and {CITY}'s got {desc}, feeling like {feels_like}°C.<br><br>
                 {market_message}<br><br>
                 <table border="1" style="border-collapse:collapse; width:100%; margin: 0 auto; font-size:14px;"><tr><th style="text-align: center; padding:8px;">Ticker</th><th style="text-align: center; padding:8px;">Last</th><th style="text-align: center; padding:8px;">1D</th><th style="text-align: center; padding:8px;">MTD</th><th style="text-align: center; padding:8px;">YTD</th></tr>{''.join([f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};"><a href="{yf_ticker_urls[ticker]}" style="color: #0066cc; text-decoration: none;">{ticker}</a>{"*" if ticker in stale_tickers else ""}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1D"], ticker)}">{row["1D"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["MTD"], ticker)}">{row["MTD"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["YTD"], ticker)}">{row["YTD"]}</td></tr>' if ticker in yf_ticker_urls else f'<tr><td style="text-align: left; padding:6px; padding-left:{"20px" if ticker in yf_tickers_indent else "6px"};">{ticker}{"*" if ticker in stale_tickers else ""}</td><td style="text-align: right; padding:6px;">{row["Last"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["1D"], ticker)}">{row["1D"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["MTD"], ticker)}">{row["MTD"]}</td><td style="text-align: right; padding:6px; {get_color_for_value(row["YTD"], ticker)}">{row["YTD"]}</td></tr>' for ticker, row in yf_summary.iterrows()])}</table>
+                <br><p style="margin:0; font-size:12px; color:#888; font-style:italic;">* for delayed</p>
                 <br><br>
               <p style="margin:0; font-size:20px; color:#d97706; font-style:italic; text-align:center;">
                 {signoff_message}
