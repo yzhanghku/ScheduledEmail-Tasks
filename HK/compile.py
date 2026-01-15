@@ -138,7 +138,9 @@ def aggregate_returns(df, tickers):
             for i in range(len(close) - 1, -1, -1):
                 if pd.notna(close.iloc[i][ticker]):
                     last[ticker] = close.iloc[i][ticker]
-                    stale_data[ticker] = True
+                    # Mark as stale if the last valid price is earlier than yesterday (i.e., i < len(close) - 2)
+                    if i < len(close) - 2:
+                        stale_data[ticker] = True
                     break
     
     # 1D return - search backwards for missing values
@@ -232,7 +234,7 @@ def aggregate_returns(df, tickers):
     )
     summary['MTD'] = summary.apply(
         lambda row: f"{row['MTD']:+.2f}" if row.name in ['^TNX', '^VIX'] and pd.notna(row['MTD'])
-        else ("-" if pd.notna(row['MTD']) and row['MTD'] == 0.00 else (f"{row['MTD']:.1f}%" if pd.notna(row['MTD']) else "-")),
+        else ("-" if pd.notna(row['MTD']) and row['MTD'] == 0.00 else (f"{row['MTD']:.0f}%" if pd.notna(row['MTD']) else "-")),
         axis=1
     )
     summary['YTD'] = summary.apply(
